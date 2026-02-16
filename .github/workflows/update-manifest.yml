@@ -1,0 +1,64 @@
+name: Update Manifest
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (without v prefix)'
+        required: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download checksums
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          curl -fsSL "https://github.com/volt-api/volt/releases/download/v${VERSION}/checksums.txt" -o checksums.txt
+          cat checksums.txt
+
+      - name: Update manifest
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          HASH=$(grep 'volt-windows-x86_64.exe' checksums.txt | awk '{print $1}')
+          cat > bucket/volt.json << EOF
+          {
+              "version": "${VERSION}",
+              "description": "The API client that respects you — offline-first, git-native, single binary",
+              "homepage": "https://github.com/volt-api/volt",
+              "license": "MIT",
+              "architecture": {
+                  "64bit": {
+                      "url": "https://github.com/volt-api/volt/releases/download/v${VERSION}/volt-windows-x86_64.exe#/volt.exe",
+                      "hash": "${HASH}"
+                  }
+              },
+              "bin": "volt.exe",
+              "checkver": {
+                  "github": "https://github.com/volt-api/volt"
+              },
+              "autoupdate": {
+                  "architecture": {
+                      "64bit": {
+                          "url": "https://github.com/volt-api/volt/releases/download/v\$version/volt-windows-x86_64.exe#/volt.exe"
+                      }
+                  },
+                  "hash": {
+                      "url": "https://github.com/volt-api/volt/releases/download/v\$version/checksums.txt",
+                      "regex": "\$sha256\\s+\\*?volt-windows-x86_64.exe"
+                  }
+              }
+          }
+          EOF
+          # Fix indentation
+          sed -i 's/^          //' bucket/volt.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/volt.json
+          git commit -m "Update Volt to v${{ github.event.inputs.version }}"
+          git push
