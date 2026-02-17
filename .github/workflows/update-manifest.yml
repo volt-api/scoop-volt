@@ -47,7 +47,7 @@ jobs:
                   },
                   "hash": {
                       "url": "https://github.com/volt-api/volt/releases/download/v\$version/checksums.txt",
-                      "regex": "\$sha256\\s+\\*?volt-windows-x86_64.exe"
+                      "regex": "\$sha256\\\\s+\\\\*?volt-windows-x86_64.exe"
                   }
               }
           }
